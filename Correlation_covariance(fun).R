@@ -1,5 +1,5 @@
 names(data)
-traits <- c("ears" ,"len"  ,   "weight"  ,"yield" )
+Traits <- c("ears" ,"len"  ,   "weight"  ,"yield" )
 co_ge(Traits,data$Parents,data$rep,data)
 co_gp<- function(Traits,Entrada,Rep,data){
   names(traits)
