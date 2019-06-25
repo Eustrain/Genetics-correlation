@@ -1,34 +1,34 @@
+library(lme4)
+data <- read.csv("data.csv",head=T)
+
 names(data)
 Traits <- c("ears" ,"len"  ,   "weight"  ,"yield" )
 co_gp(Traits,data$Parents,data$rep,data)
 
-co_gp<- function(Traits,Entrada,Rep,data){
+co_gp<- function(Traits,Entry,Rep,data){
+
   traits <- Traits
-  geno<-Entrada
-  rep <- rep
+  geno<-as.factor(Entry)
+  rep <-as.factor(Rep)
+###########################################  
+ nrep <- length(levels(rep))
+leng_traits<- length(traits) # number of traits
   
 ###########################################
   
-  geno <- as.character(geno)
-  rep <- as.character(data$rep)
-  
   # Creating the matrix  G and P
   
-  leng_traits<- length(traits) # number of traits
+ 
   G <- matrix(nrow = leng_traits, ncol = leng_traits) 
   P <- matrix(nrow = leng_traits, ncol = leng_traits) 
-  l_g <-length(levels(as.factor(data$Parents))) 
-  nrep <- length(levels(as.factor(data$rep))) 
-  
-  # Estimation of components of variance using the REML method.
-
+  # Estimation of  variance each traits.
 
     for (i in 1: leng_traits) {
       y <- data[,traits[i]]
-      fm <- lme4::lmer(y ~ (1|geno) + (1|rep))
-      vc <- lme4::VarCorr(fm)
+      fm <- lmer(y ~ (1|geno)+(1|rep))
+      vc <- VarCorr(fm,comp="Variance")
       G[i, i] <- vc$geno[1]
-      P[i, i] <- vc$geno[1] + attr(vc, "sc")^2 /nrep
+      P[i, i] <- vc$geno[1] + attr(vc, "sc")^2/nrep 
     }
 
   ####Sum de each variable  and  estimation of  variance components
@@ -37,22 +37,38 @@ co_gp<- function(Traits,Entrada,Rep,data){
       for (i in 1:( leng_traits - 1)) {
         for (j in (i + 1): leng_traits) {
        y<-data[,traits[i]] + data[,traits[j]]
-          fm <- lme4::lmer(y ~ (1|  geno) + (1|  rep))
-        vcz <- lme4::VarCorr(fm) 
-       G[i, j] <- G[j, i] <- (vcz$geno[1] - G[i, i] - G[j, j]) / 2
-        P[i, j] <- P[j, i] <- (vcz$geno[1] + attr(vcz, "sc")^2 / nrep - P[i, i] - P[j, j]) / 2
+          fm <-lmer(y ~ (1|  geno) + (1| rep))
+        varcor <-VarCorr(fm) 
+       G[i, j] <- G[j, i] <- (varcor$geno[1] - G[i, i] - G[j, j]) / 2
+        P[i, j] <- P[j, i] <- (varcor$geno[1] + attr(varcor, "sc")^2 / nrep - P[i, i] - P[j, j]) / 2
        
         }
       }
   
-    d1 <- diag(diag(G)^{-0.5},  leng_traits,  leng_traits)
-    d2 <- diag(diag(P)^{-0.5},  leng_traits,  leng_traits)
-    GC <- d1 %*% G %*% d1 # Genotypic correlation matrix
-    PC <- d2 %*% P %*% d2 # Phenotypic correlation matrix
-    
-  # results
+  ####################Estimation of correlation and covariance
+    diag_G <- diag(diag(G)^{-0.5},  leng_traits,  leng_traits)
+    diag_P<- diag(diag(P)^{-0.5},  leng_traits,  leng_traits)
+    GC <- diag_G %*% G %*% diag_G# Genotypic correlation matrix
+    PC <- diag_P %*% P %*% diag_P # Phenotypic correlation matrix
+####################Names of  matrix    
+    row.names(G) <- Traits
+    colnames(G) <- Traits
+    row.names(P) <- Traits
+    colnames(P) <- Traits
+    row.names(GC) <- Traits
+    colnames(GC) <- Traits
+    row.names(PC) <- Traits
+    colnames(PC) <- Traits
+ 
+    G <- round(G,2)
+    P <- round(P,2)
+    GC <- round(GC,2)
+    PC <- round(PC,2)
+ # results
   
   results<- list(Genetic_Cov = G, Pheno_Cov = P, Genetic_Cor = GC, Pheno_Cor = PC)
   print(results)
 
 }
+
+##Singh, R.K. and Chaudhary, B.D. (1987) Biometrical Methods in Quantitative Genetic Analysis. Kalyani Publishers, New Delhi, Ludhiana, India, 318.
